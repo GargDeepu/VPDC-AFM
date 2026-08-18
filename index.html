@@ -1,2 +1,33 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VPC | AFM Practice</title><link rel="stylesheet" href="styles.css"></head><body><div id="app"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cadivyanshu.github.io/AFM/questions.js"></script><script src="app.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VPC | AFM Practice</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Load the original AFM question bank first. -->
+  <script src="https://cadivyanshu.github.io/AFM/questions.js"></script>
+  <!-- The app's legacy loader fetches questions.js; provide it locally from the already-loaded global. -->
+  <script>
+    (function () {
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (String(url).endsWith('/questions.js') && Array.isArray(window.AFM_MCQS_QUESTIONS)) {
+          const source = 'window.AFM_MCQS_QUESTIONS = ' + JSON.stringify(window.AFM_MCQS_QUESTIONS) + ';';
+          return Promise.resolve(new Response(source, {
+            status: 200,
+            headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
+          }));
+        }
+        return nativeFetch(input, init);
+      };
+    })();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
