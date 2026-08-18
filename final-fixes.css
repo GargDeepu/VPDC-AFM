@@ -1,17 +1,3 @@
-/* Targeted VPDC corrections: do not alter quiz logic or layout. */
-.vpdc-lifelines .vpdc-life{
-  box-sizing:border-box !important;
-  width:74px !important;
-  min-width:74px !important;
-  height:54px !important;
-  min-height:54px !important;
-  padding:6px 4px !important;
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  justify-content:center !important;
-  line-height:1.1 !important;
-}
-.vpdc-lifelines .vpdc-life .big{line-height:1.1 !important;margin:0 !important;}
-/* The VPDC mark is an image asset, never reconstructed as text/CSS. */
-.vpdc-logo-exact{display:block;object-fit:contain;object-position:center;max-width:100%;height:auto;}
+/* Targeted VPDC corrections */
+.vpdc-lifelines .vpdc-life{box-sizing:border-box!important;width:74px!important;min-width:74px!important;height:54px!important;min-height:54px!important;padding:6px 4px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;line-height:1.1!important}.vpdc-lifelines .vpdc-life .big{line-height:1.1!important;margin:0!important}.vpdc-logo-exact{display:block;object-fit:contain;object-position:center;max-width:100%;height:auto}.student-name-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:7px 10px;border:1px solid rgba(250,204,21,.35);border-radius:10px;background:rgba(250,204,21,.08);color:#fde68a;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.student-name-chip i{font-size:11px;opacity:.85}
+@media(max-width:900px){body{padding-bottom:108px!important}.vpdc-header{position:static!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;padding:10px 12px!important;gap:9px!important}.vpdc-title{display:flex!important;flex-direction:column!important;align-items:center!important;text-align:center!important}.vpdc-center{order:3!important;width:100%!important}.vpdc-center label{display:none!important}.vpdc-center select{width:100%!important;min-width:0!important}.vpdc-tools{order:2!important;width:100%!important;display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important;align-items:center!important}.vpdc-mini{display:none!important}.student-name-chip{max-width:100%!important}.vpdc-main{display:block!important;margin:10px auto!important;padding:0 10px!important}.vpdc-sidebar{position:static!important;margin-top:12px!important}.vpdc-card,.vpdc-case{border-radius:14px!important}.vpdc-card{padding:14px!important}.vpdc-question{font-size:16px!important;line-height:1.55!important}.vpdc-case-body{font-size:14px!important;padding:0 13px 14px!important}.vpdc-option{padding:12px!important;gap:9px!important;min-height:58px!important;font-size:13px!important}.vpdc-lifelines{position:static!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;padding:8px 10px!important}.vpdc-life{width:100%!important;min-width:0!important;height:54px!important;font-size:9px!important;padding:5px 2px!important}.vpdc-life-note{display:none!important}.vpdc-bottom{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;padding:8px!important}.vpdc-bottom-center{display:contents!important}.vpdc-bottom .vpdc-btn{width:100%!important;min-height:44px!important;padding:8px 7px!important;font-size:11px!important;white-space:nowrap!important}.vpdc-bottom .vpdc-btn.primary{grid-column:span 2!important}.vpdc-palette-grid,.vpdc-case-list{grid-template-columns:repeat(5,1fr)!important}.vpdc-modal{padding:16px!important;border-radius:16px!important;max-height:90vh!important}.vpdc-complete{padding:14px!important}.vpdc-complete-card{padding:22px 16px!important}}@media(max-width:390px){.vpdc-lifelines{gap:5px!important;padding:7px!important}.vpdc-life .big{font-size:13px!important}.vpdc-tools{grid-template-columns:1fr!important}.vpdc-score{justify-self:start!important}.student-name-chip{font-size:11px!important}.vpdc-bottom .vpdc-btn{font-size:10px!important}}
