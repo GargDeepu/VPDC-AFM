@@ -1,33 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>VPC | AFM Practice</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>CA Final AFM – KBC Style Pro | VPC</title>
+  <meta name="description" content="CA Final Paper 2 – Advanced Financial Management MCQ Practice in KBC Style by VPC – Vinijyn Pro Classes.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cadivyanshu.github.io/AFM/questions.js"></script>
 </head>
 <body>
   <div id="app"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Load the original AFM question bank first. -->
-  <script src="https://cadivyanshu.github.io/AFM/questions.js"></script>
-  <!-- The app's legacy loader fetches questions.js; provide it locally from the already-loaded global. -->
-  <script>
-    (function () {
-      const nativeFetch = window.fetch.bind(window);
-      window.fetch = function (input, init) {
-        const url = typeof input === 'string' ? input : (input && input.url) || '';
-        if (String(url).endsWith('/questions.js') && Array.isArray(window.AFM_MCQS_QUESTIONS)) {
-          const source = 'window.AFM_MCQS_QUESTIONS = ' + JSON.stringify(window.AFM_MCQS_QUESTIONS) + ';';
-          return Promise.resolve(new Response(source, {
-            status: 200,
-            headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
-          }));
-        }
-        return nativeFetch(input, init);
-      };
-    })();
-  </script>
   <script src="app.js"></script>
 </body>
 </html>
