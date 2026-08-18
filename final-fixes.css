@@ -1,0 +1,17 @@
+/* Targeted VPDC corrections: do not alter quiz logic or layout. */
+.vpdc-lifelines .vpdc-life{
+  box-sizing:border-box !important;
+  width:74px !important;
+  min-width:74px !important;
+  height:54px !important;
+  min-height:54px !important;
+  padding:6px 4px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:1.1 !important;
+}
+.vpdc-lifelines .vpdc-life .big{line-height:1.1 !important;margin:0 !important;}
+/* The VPDC mark is an image asset, never reconstructed as text/CSS. */
+.vpdc-logo-exact{display:block;object-fit:contain;object-position:center;max-width:100%;height:auto;}
