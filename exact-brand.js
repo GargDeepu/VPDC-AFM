@@ -1,8 +1,9 @@
 /* Exact VPDC brand asset loader.
-   Uses the exact supplied SVG asset. No logo reconstruction or redraw.
+   Uses the exact supplied SVG asset already stored in the repository history.
+   No logo reconstruction, redraw, tracing, or CSS recreation.
 */
 (function () {
-  const SOURCE = 'assets/vpdc-logo.svg.gz.b64';
+  const SOURCE = 'https://raw.githubusercontent.com/GargDeepu/VPDC-AFM/b86a4c0f6049fb0dbbfb6adf2c0c47c88f97910f/assets/vpdc-logo.svg.gz.b64';
   let logoUrl = null;
   let ready = false;
   let applying = false;
@@ -68,13 +69,10 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    /* The supplied SVG is 863 × 525. Reserve its full aspect-ratio box so the
-       following heading can never overlap the logo on the login/completion pages. */
     .vpc-logo.large,
     .vpdc-logo.large{
       display:block !important;
       width:100% !important;
-      min-height:0 !important;
       height:auto !important;
       margin-bottom:28px !important;
       line-height:0 !important;
@@ -97,7 +95,12 @@
       flex:none !important;
     }
     .vpdc-exact-logo-wrap.small{width:180px !important;aspect-ratio:863 / 525 !important}
-    .vpdc-exact-logo-wrap.mini{width:104px !important;aspect-ratio:863 / 525 !important}
+    .vpdc-exact-logo-wrap.mini{
+      width:104px !important;
+      aspect-ratio:863 / 525 !important;
+      margin-left:auto !important;
+      margin-right:0 !important;
+    }
     .vpdc-exact-logo{
       display:block !important;
       width:100% !important;
