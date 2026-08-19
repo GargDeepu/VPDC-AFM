@@ -1,7 +1,5 @@
 /* Exact VPDC brand asset loader.
-   The source asset is the exact SVG supplied for VPDC branding.
-   It is stored in the repository as gzip+base64 only to preserve the original SVG
-   bytes through the repository connector, then reconstructed in the browser.
+   Uses the exact supplied SVG asset. No logo reconstruction or redraw.
 */
 (function () {
   const SOURCE = 'assets/vpdc-logo.svg.gz.b64';
@@ -22,7 +20,7 @@
       const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
       return new Uint8Array(await new Response(stream).arrayBuffer());
     }
-    throw new Error('This browser does not support gzip decompression required for the exact logo asset.');
+    throw new Error('This browser does not support the required SVG asset decompression.');
   }
 
   async function loadExactLogo() {
@@ -32,24 +30,20 @@
     const compressed = bytesFromBase64(encoded);
     const svgBytes = await gunzip(compressed);
     const svgText = new TextDecoder('utf-8').decode(svgBytes);
-    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    logoUrl = URL.createObjectURL(blob);
+    logoUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }));
     ready = true;
     applyExactLogo();
   }
 
   function makeImage(kind) {
     const wrap = document.createElement('span');
-    wrap.className = 'vpdc-exact-logo-wrap';
+    wrap.className = 'vpdc-exact-logo-wrap ' + kind;
     const img = document.createElement('img');
     img.className = 'vpdc-exact-logo';
     img.src = logoUrl;
     img.alt = 'VPDC – Vinijyn Pro Classes';
     img.decoding = 'async';
     img.draggable = false;
-    if (kind === 'large') wrap.classList.add('large');
-    else if (kind === 'mini') wrap.classList.add('mini');
-    else wrap.classList.add('small');
     wrap.appendChild(img);
     return wrap;
   }
@@ -72,23 +66,58 @@
     }
   }
 
-  const observer = new MutationObserver(applyExactLogo);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-
   const style = document.createElement('style');
   style.textContent = `
-    .vpdc-exact-logo-wrap{display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;padding:4px 7px;box-sizing:border-box;overflow:hidden;line-height:0}
-    .vpdc-exact-logo-wrap.small{width:180px;max-width:100%}
-    .vpdc-exact-logo-wrap.large{width:300px;max-width:100%}
-    .vpdc-exact-logo-wrap.mini{width:104px;max-width:100%}
-    .vpdc-exact-logo{display:block;width:100%;height:auto;max-width:100%;object-fit:contain}
+    /* The supplied SVG is 863 × 525. Reserve its full aspect-ratio box so the
+       following heading can never overlap the logo on the login/completion pages. */
+    .vpc-logo.large,
+    .vpdc-logo.large{
+      display:block !important;
+      width:100% !important;
+      min-height:0 !important;
+      height:auto !important;
+      margin-bottom:28px !important;
+      line-height:0 !important;
+      overflow:visible !important;
+    }
+    .vpdc-exact-logo-wrap{
+      display:block !important;
+      position:relative !important;
+      width:300px !important;
+      max-width:100% !important;
+      aspect-ratio:863 / 525 !important;
+      height:auto !important;
+      margin:0 auto !important;
+      padding:0 !important;
+      box-sizing:border-box !important;
+      background:#fff !important;
+      border-radius:0 !important;
+      overflow:hidden !important;
+      line-height:0 !important;
+      flex:none !important;
+    }
+    .vpdc-exact-logo-wrap.small{width:180px !important;aspect-ratio:863 / 525 !important}
+    .vpdc-exact-logo-wrap.mini{width:104px !important;aspect-ratio:863 / 525 !important}
+    .vpdc-exact-logo{
+      display:block !important;
+      width:100% !important;
+      height:100% !important;
+      max-width:none !important;
+      object-fit:contain !important;
+      object-position:center !important;
+    }
     @media(max-width:560px){
-      .vpdc-exact-logo-wrap.large{width:min(270px,92vw)}
-      .vpdc-exact-logo-wrap.small{width:min(175px,70vw)}
-      .vpdc-exact-logo-wrap.mini{width:92px}
+      .vpc-logo.large,
+      .vpdc-logo.large{margin-bottom:24px !important}
+      .vpdc-exact-logo-wrap.large{width:min(300px,92vw) !important}
+      .vpdc-exact-logo-wrap.small{width:min(180px,72vw) !important}
+      .vpdc-exact-logo-wrap.mini{width:92px !important}
     }
   `;
   document.head.appendChild(style);
+
+  const observer = new MutationObserver(applyExactLogo);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   loadExactLogo().catch((error) => console.error('Exact VPDC logo load failed:', error));
 })();
