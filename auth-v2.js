@@ -1,6 +1,9 @@
 /* VPDC authentication + authenticated learning-session layer.
    UI is intentionally left to the existing application. */
 (function(){
+  // Claim startup immediately so legacy app.js cannot auto-resume through the
+  // unauthenticated phone-only RPC path.
+  window.__VPDC_AUTH_V2_ACTIVE__ = true;
   if(typeof db==='undefined') return;
   const client=db;
   const redirectTo=window.location.origin+window.location.pathname;
@@ -56,8 +59,6 @@
   window.vpdcPersistProgress=async(status='active')=>{if(!S.attempt)return;return client.rpc('save_authenticated_progress',{p_attempt_id:S.attempt.id,p_current_index:S.i,p_current_question_id:S.questions[S.i]?.id||'',p_total_seconds:Math.floor((Date.now()-S.started)/1000),p_status:status});};
   window.vpdcLogEvent=async(type,q,a)=>{if(!S.sessionId||!S.attempt||!q)return;const {error}=await client.rpc('record_answer_event',{p_session_id:S.sessionId,p_attempt_id:S.attempt.id,p_question_id:String(q.id),p_question_index:S.i,p_event_type:type,p_selected_option:a?.selected_option??null,p_is_correct:a?.is_correct??null,p_skipped:!!a?.skipped,p_marked_for_review:!!a?.marked_for_review,p_hidden_options:a?.hidden_options||S.hidden[q.id]||[],p_used_5050:!!a?.used_5050,p_used_expert:!!a?.used_expert,p_used_poll:!!a?.used_poll,p_seconds_spent:Math.floor(a?.seconds_spent||0)});if(error)console.error('record_answer_event',error);};
 
-  // Patch global handlers so the existing quiz UI keeps its current look/functionality,
-  // while every important action also records an authenticated event.
   const wrap=(name,after)=>{const fn=window[name];if(typeof fn!=='function')return;window[name]=async function(...args){const beforeI=S.i;const q=S.questions?.[beforeI];const out=await fn.apply(this,args);await after?.(q,out);return out;};};
   wrap('choose',async(q)=>{if(q)await window.vpdcLogEvent('answer_selected',q,S.answers[q.id]);});
   wrap('toggleMark',async(q)=>{if(q)await window.vpdcLogEvent('mark_toggled',q,S.answers[q.id]);});
