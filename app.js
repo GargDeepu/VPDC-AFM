@@ -11,6 +11,7 @@ const db = window.supabase.createClient(CFG.url, CFG.key);
 let S = {
   student: null,
   attempt: null,
+  sessionId: null,
   questions: [],
   i: 0,
   answers: {},
@@ -24,7 +25,7 @@ let S = {
   passageOpen: true
 };
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[c]));
 const sec = (n) => { n=Math.max(0,Math.floor(n||0)); return `${String(Math.floor(n/3600)).padStart(2,'0')}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`; };
 
 function vpcLogo(size='small') {
@@ -209,8 +210,8 @@ async function toggleMark(){const q=S.questions[S.i],a=answerState(q);a.marked_f
 async function saveAnswer(a){const {error}=await db.rpc('save_attempt_answer',{p_phone:S.student.phone,p_attempt_id:S.attempt.id,p_question_id:a.question_id,p_question_index:a.question_index,p_selected_option:a.selected_option,p_correct_option:a.correct_option,p_is_correct:a.is_correct,p_skipped:a.skipped,p_marked:a.marked_for_review,p_hidden_options:a.hidden_options||S.hidden[a.question_id]||[],p_used_5050:a.used_5050||false,p_used_expert:a.used_expert||false,p_used_poll:a.used_poll||false,p_seconds_spent:Math.floor(a.seconds_spent||0)});if(error)console.error(error);}
 async function save(status='active'){if(!S.attempt)return;const q=S.questions[S.i];const {error}=await db.rpc('save_attempt_progress',{p_phone:S.student.phone,p_attempt_id:S.attempt.id,p_current_index:S.i,p_current_question_id:q.id,p_total_seconds:Math.floor((Date.now()-S.started)/1000),p_status:status});const x=$('#saved');if(x)x.textContent=error?'⚠ Save issue':'☁ Saved just now';}
 
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save('active');});
-window.addEventListener('beforeunload',()=>{try{save('active');}catch(e){}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&S.attempt)save('active');});
+window.addEventListener('beforeunload',()=>{try{if(S.attempt)save('active');}catch(e){}});
 
 function analysis(){
   const x=stats();
@@ -237,13 +238,16 @@ function usePoll(){const q=S.questions[S.i],id=q.caseId||'0';if(S.pollUsed[id])r
 async function finish(){
   await save('completed');
   const x=stats();
-  document.body.innerHTML=`<div class="completion-page"><div class="completion-glow"></div><section class="completion-card">${vpcLogo('large')}<div class="completion-icon"><i class="fa-solid fa-trophy"></i></div><div class="login-kicker">ATTEMPT COMPLETED</div><h1>Well done, ${esc(S.student.name || 'Student')}!</h1><p class="login-copy">You attempted <strong>${x.attempted}</strong> questions with <strong>${x.accuracy}%</strong> accuracy in <strong>${sec(x.time)}</strong>.</p><div class="completion-actions"><button id="review" class="secondary-big"><i class="fa-solid fa-chart-line"></i> Review Analysis</button><button id="restart" class="secondary-big"><i class="fa-solid fa-rotate-right"></i> Start Again</button></div><div class="feedback-wrap"><div class="feedback-title"><i class="fa-regular fa-comment-dots"></i> Share your feedback with VPC</div><iframe class="feedback-frame" src="${CFG.feedback}" title="VPC Student Feedback Form" loading="lazy"></iframe><a class="feedback-link" href="${CFG.feedbackOpen}" target="_blank" rel="noopener">Open feedback form in a new tab</a></div></section></div>`;
+  document.body.innerHTML=`<div class="completion-page"><div class="completion-glow"></div><section class="completion-card">${vpcLogo('large')}<div class="completion-icon"><i class="fa-solid fa-trophy"></i></div><div class="login-kicker">ATTEMPT COMPLETED</div><h1>Well done, ${esc(S.student.name || 'Student')}!</h1><p class="login-copy">You attempted <strong>${x.attempted}</strong> questions with <strong>${x.accuracy}%</strong> accuracy in <strong>${sec(x.time)}</strong>.</p><div class="completion-actions"><button id="review" class="secondary-big"><i class="fa-solid fa-chart-line"></i> Review Analysis</button><button id="restart" class="secondary-big"><i class="fa-solid fa-rotate-right"></i> Start Again</button></div><div class="feedback-wrap"><div class="feedback-title"><i class="fa-regular fa-comment-dots"></i> Share your feedback with VPC</div><iframe class="feedback-frame" src="${CFG.feedback}" title="VPC Student Feedback Form" loading="lazy"></iframe><a class="feedback-link" href="${CFG.feedbackOpen}" target="_blank" rel="noopener">Open feedback form in a new tab</a></div><div class="completion-credit">Created by Mr. Divyanshu Garg</div></section></div>`;
   $('#review').onclick=analysis;
-  $('#restart').onclick=async()=>{localStorage.removeItem('vpcAttemptRestart');await db.rpc('start_new_attempt',{p_phone:S.student.phone,p_quiz_key:CFG.quiz}).catch(()=>{});location.reload();};
+  $('#restart').onclick=async()=>{await db.rpc('start_new_attempt',{p_phone:S.student.phone,p_quiz_key:CFG.quiz}).catch(()=>{});location.reload();};
 }
 
-(async()=>{
+// Legacy phone/name login is retained only as an explicit fallback and is no longer booted automatically.
+// The authenticated Google + verified-mobile flow in auth-v2.js owns application startup.
+setTimeout(()=>{
+  if(window.__VPDC_AUTH_V2_ACTIVE__) return;
   const p=localStorage.getItem('vpcPhone');
-  if(p){S.student={phone:p,name:localStorage.getItem('vpcName')||'',place:localStorage.getItem('vpcPlace')||''};await bootQuiz();}
+  if(p){S.student={phone:p,name:localStorage.getItem('vpcName')||'',place:localStorage.getItem('vpcPlace')||''};bootQuiz();}
   else login();
-})();
+},0);
