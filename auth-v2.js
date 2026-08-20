@@ -1,0 +1,131 @@
+/* VPDC authentication + session activity layer.
+   Google OAuth authenticates the student's account; phone SMS OTP verifies and
+   links the student's mobile number. Quiz progress and immutable activity events
+   are recorded against an authenticated learning session.
+*/
+(function(){
+  const FEEDBACK='https://docs.google.com/forms/d/e/1FAIpQLSdN2TbASV9tvzUfvImDBDD3XHRE4JWsU6m5YCK7eLDU5wZ-nQ/viewform?usp=publish-editor';
+  const supa=window.supabase;
+  if(!supa || !window.db) return;
+  const client=window.db;
+  const redirectTo=window.location.origin+window.location.pathname;
+  let pendingPhone='';
+  let pendingPlace='';
+
+  function normalizePhone(v){
+    const raw=String(v||'').trim();
+    if(!raw)return '';
+    const digits=raw.replace(/\D/g,'');
+    if(digits.length===10)return '+91'+digits;
+    if(raw.startsWith('+') && digits.length>=8)return '+'+digits;
+    return digits.length>=8?'+'+digits:'';
+  }
+  function userMeta(user){
+    const m=user?.user_metadata||{};
+    return {name:String(m.full_name||m.name||m.user_name||'').trim(),email:String(user?.email||m.email||'').trim()};
+  }
+  function setMsg(msg,isError=false){const el=document.getElementById('auth-msg');if(el){el.textContent=msg;el.style.color=isError?'#fca5a5':'#a5f3fc';}}
+  function authCard(body){
+    const logo=typeof window.vpcLogo==='function'?window.vpcLogo('large'):'';
+    document.body.innerHTML=`<div class="login-page"><div class="login-glow"></div><section class="login-card">${logo}<div class="login-kicker">CA FINAL • PAPER 2</div><h1>Advanced Financial Management</h1>${body}<div id="auth-msg" class="login-error"></div></section></div>`;
+  }
+
+  function login(){
+    authCard(`<p class="login-copy">Sign in securely with Google, then verify your mobile number once. Your quiz progress, answers and activity will remain attached to your student account.</p><div class="login-note"><i class="fa-brands fa-google"></i> Google sign-in + one-time mobile verification</div><button id="google-login" class="primary-btn" type="button"><i class="fa-brands fa-google"></i> Continue with Google</button><p class="login-copy" style="margin-top:12px;font-size:10px">Your mobile number is collected for verified student contact and account continuity.</p>`);
+    document.getElementById('google-login').onclick=async()=>{
+      setMsg('Opening Google sign-in…');
+      const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo}});
+      if(error)setMsg(error.message,true);
+    };
+  }
+
+  async function showProfileForm(user,existing){
+    const meta=userMeta(user);
+    const name=existing?.name||meta.name||'';
+    const place=existing?.place||'';
+    const phone=existing?.phone||'';
+    authCard(`<p class="login-copy">Welcome${name?', '+esc(name):''}. We need your mobile number and city once to complete your VPDC student profile.</p><form id="profile-form"><label>Full Name</label><input name="name" value="${esc(name)}" required minlength="2" autocomplete="name" placeholder="Your name"><label>Mobile Number</label><input name="phone" value="${esc(phone)}" required inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210"><label>City / Place</label><input name="place" value="${esc(place)}" required minlength="2" autocomplete="address-level2" placeholder="Your city or place"><button class="primary-btn" type="submit"><i class="fa-solid fa-mobile-screen-button"></i> Send OTP</button></form>`);
+    document.getElementById('profile-form').onsubmit=async e=>{
+      e.preventDefault();
+      const f=new FormData(e.target),n=String(f.get('name')||'').trim(),p=normalizePhone(f.get('phone')),pl=String(f.get('place')||'').trim();
+      if(!p){setMsg('Please enter a valid mobile number.',true);return;}
+      pendingPhone=p;pendingPlace=pl;
+      setMsg('Sending OTP to '+p+'…');
+      const {error}=await client.auth.updateUser({phone:p});
+      if(error){setMsg(error.message,true);return;}
+      await showOtpForm(user,n,p,pl);
+    };
+  }
+
+  async function showOtpForm(user,name,phone,place){
+    authCard(`<p class="login-copy">We sent a 6-digit OTP to <strong>${esc(phone)}</strong>.</p><form id="otp-form"><label>Mobile OTP</label><input name="otp" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit OTP"><button class="primary-btn" type="submit"><i class="fa-solid fa-circle-check"></i> Verify Mobile & Continue</button><button id="back-profile" class="vpdc-btn" type="button" style="width:100%;margin-top:9px">Change mobile number</button></form>`);
+    document.getElementById('back-profile').onclick=()=>showProfileForm(user,{name,phone,place});
+    document.getElementById('otp-form').onsubmit=async e=>{
+      e.preventDefault();
+      const token=String(new FormData(e.target).get('otp')||'').trim();
+      if(!/^\d{6}$/.test(token)){setMsg('Enter the 6-digit OTP.',true);return;}
+      setMsg('Verifying mobile number…');
+      const {data,error}=await client.auth.verifyOtp({phone,token,type:'phone_change'});
+      if(error){setMsg(error.message,true);return;}
+      const user2=data?.user|| (await client.auth.getUser()).data.user;
+      await completeProfile(user2,name,phone,place,true);
+    };
+  }
+
+  async function completeProfile(user,name,phone,place,verified){
+    const {data,error}=await client.rpc('link_authenticated_student',{p_name:name,p_place:place,p_phone:phone,p_phone_verified:verified});
+    if(error){setMsg(error.message,true);return;}
+    S.student=data;
+    await bootAuthenticated();
+  }
+
+  async function bootAuthenticated(){
+    const {data,error}=await client.rpc('start_learning_session',{p_quiz_key:CFG.quiz});
+    if(error){renderError('Unable to start your VPC session',error.message);return;}
+    const student=data.student, attempt=data.attempt, session=data.session;
+    S.student=student; S.attempt=attempt; S.sessionId=session.id;
+    S.questions=loadQuestions();
+    if(!S.questions.length){renderError('Question bank could not be loaded','The original AFM question bank was not available in this browser session.');return;}
+    S.i=Math.min(Number(attempt.current_question_index||0),S.questions.length-1);
+    S.answers={}; S.hidden={}; S.lifeline5050={}; S.expertUsed={}; S.pollUsed={};
+    const a=await client.rpc('load_attempt_answers',{p_phone:student.phone,p_attempt_id:attempt.id});
+    if(!a.error)(a.data||[]).forEach(x=>{S.answers[String(x.question_id)]=x;S.hidden[String(x.question_id)]=x.hidden_options||[];if(x.used_5050)S.lifeline5050[String(x.question_id)]=true;});
+    S.started=Date.now()-Number(attempt.total_seconds||0)*1000; S.questionStarted=Date.now();
+    render();
+  }
+
+  async function ensureAuthenticated(){
+    const {data}=await client.auth.getSession();
+    if(!data.session){login();return;}
+    const user=data.session.user;
+    let {data:student}=await client.from('students').select('*').eq('auth_user_id',user.id).maybeSingle();
+    const verified=!!user.phone_confirmed_at && !!user.phone;
+    if(student && verified){bootAuthenticated();return;}
+    if(!student){student={...userMeta(user),phone:'',place:''};}
+    if(verified){await completeProfile(user,student.name||userMeta(user).name,normalizePhone(user.phone),student.place||'',true);return;}
+    await showProfileForm(user,student);
+  }
+
+  function eventPayload(a,eventType,q){return {p_session_id:S.sessionId,p_attempt_id:S.attempt.id,p_question_id:String(q.id),p_question_index:S.i,p_event_type:eventType,p_selected_option:a?.selected_option??null,p_is_correct:a?.is_correct??null,p_skipped:!!a?.skipped,p_marked_for_review:!!a?.marked_for_review,p_hidden_options:a?.hidden_options||S.hidden[q.id]||[],p_used_5050:!!a?.used_5050,p_used_expert:!!a?.used_expert,p_used_poll:!!a?.used_poll,p_seconds_spent:Math.floor(a?.seconds_spent||0)};}
+  async function logEvent(type,q,a){if(!S.sessionId||!S.attempt)return;const {error}=await client.rpc('record_answer_event',eventPayload(a,type,q));if(error)console.error('answer event',error);}
+
+  const originalSaveAnswer=window.saveAnswer;
+  window.saveAnswer=async function(a){await originalSaveAnswer(a); const q=S.questions[S.i]; await logEvent('answer_saved',q,a);};
+  const originalSave=window.save;
+  window.save=async function(status='active'){await originalSave(status); if(S.sessionId&&S.attempt){await client.rpc('save_authenticated_progress',{p_attempt_id:S.attempt.id,p_current_index:S.i,p_current_question_id:S.questions[S.i]?.id||'',p_total_seconds:Math.floor((Date.now()-S.started)/1000),p_status:status});}};
+
+  const originalChoose=window.choose;
+  window.choose=async function(j){const q=S.questions[S.i];await originalChoose(j);const after=answerState(q);await logEvent('answer_selected',q,after);};
+  const originalToggle=window.toggleMark;
+  window.toggleMark=async function(){const q=S.questions[S.i];await originalToggle();await logEvent('mark_toggled',q,answerState(q));};
+  const originalMove=window.move;
+  window.move=async function(n){const q=S.questions[S.i],a=answerState(q);if(n>0 && (a.selected_option===null || a.selected_option===undefined)){a.skipped=true; a.question_index=S.i; S.answers[q.id]=a; await saveAnswer(a); await logEvent('question_skipped',q,a);} await logEvent('navigation',q,a); return originalMove(n);};
+
+  function wrapLifeline(name,type){const original=window[name]; if(typeof original!=='function')return; window[name]=async function(){const q=S.questions[S.i];const result=await original();await logEvent(type,q,answerState(q));return result;};}
+  wrapLifeline('use5050','lifeline_5050');wrapLifeline('useExpert','lifeline_expert');wrapLifeline('usePoll','lifeline_poll');
+
+  window.vpdcLogout=async function(){await client.auth.signOut();location.href=redirectTo;};
+  window.login=login;
+  window.bootQuiz=bootAuthenticated;
+  ensureAuthenticated();
+})();
